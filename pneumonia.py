@@ -1,4 +1,4 @@
- import stremlit as st
+import stremlit as st
  
 import os
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
