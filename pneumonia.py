@@ -172,8 +172,8 @@ def main():
         
         **How to use:**
         1. Upload a chest X-ray image
-        2. Wait for the prediction
-        3. View the results
+        2. Wait for quality validation
+        3. Analyze and view results
         
         **Model Details:**
         - Input size: 128x128 pixels
@@ -181,14 +181,35 @@ def main():
         - Classes: Normal, Pneumonia
         """)
         
+        st.header("📊 Image Quality Standards")
+        st.write("""
+        **Acceptable Quality Ranges:**
+        - **Sharpness**: ≥ 100 (Laplacian variance)
+        - **Contrast**: ≥ 20 (Standard deviation)
+        - **Brightness**: 20-235 (Mean pixel value)
+        - **Dark pixels**: < 70% of image
+        - **Bright pixels**: < 70% of image
+        - **Overall Quality Score**: ≥ 40/100
+        
+        Images below these thresholds will be rejected for analysis.
+        """)
+        
         st.header("⚙️ Settings")
+        st.write(f"""
+        **Recommended Threshold:** 0.40
+        
+        The threshold determines when an image is classified as pneumonia. 
+        - Lower values (0.3-0.4): More sensitive, fewer missed cases
+        - Higher values (0.5-0.7): More specific, fewer false alarms
+        """)
+        
         decision_threshold = st.slider(
             "Decision Threshold",
             min_value=0.0,
             max_value=1.0,
             value=float(decision_threshold),
             step=0.05,
-            help="Adjust the threshold for classification"
+            help="Adjust the threshold for classification. Recommended: 0.40"
         )
     
     # File uploader
@@ -218,22 +239,51 @@ def main():
         with col1:
             st.progress(quality_score / 100)
         with col2:
-            st.metric("Quality", f"{quality_score:.0f}/100")
+            color = "🟢" if quality_score >= 70 else "🟡" if quality_score >= 40 else "🔴"
+            st.metric("Quality", f"{color} {quality_score:.0f}/100")
+        
+        # Show detailed metrics
+        with st.expander("📈 View Detailed Quality Metrics"):
+            img_array = np.array(img.convert('L'))
+            laplacian_var = cv2.Laplacian(img_array, cv2.CV_64F).var()
+            brightness = np.mean(img_array)
+            contrast = np.std(img_array)
+            
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.metric("Sharpness", f"{laplacian_var:.1f}", 
+                         "✅ Pass" if laplacian_var >= 100 else "❌ Fail")
+            with col2:
+                st.metric("Contrast", f"{contrast:.1f}",
+                         "✅ Pass" if contrast >= 20 else "❌ Fail")
+            with col3:
+                st.metric("Brightness", f"{brightness:.1f}",
+                         "✅ Pass" if 20 <= brightness <= 235 else "❌ Fail")
+            
+            st.info("""
+            **Quality Thresholds:**
+            - Sharpness ≥ 100 (measures image focus)
+            - Contrast ≥ 20 (measures detail visibility)
+            - Brightness: 20-235 (proper exposure)
+            """)
         
         if not is_valid:
             st.error(f"⚠️ **Image Quality Issues Detected:**\n\n{message}")
             st.warning("""
             **Please upload a clearer X-ray image for accurate analysis.**
             
-            Tips for better image quality:
-            - Ensure the image is in focus and not blurry
-            - Use proper lighting (not too dark or too bright)
+            **Tips for better image quality:**
+            - Ensure the image is in focus and not blurry (Sharpness ≥ 100)
+            - Use proper lighting - not too dark or too bright (Brightness: 20-235)
+            - Ensure good contrast for detail visibility (Contrast ≥ 20)
             - Avoid images with too much noise or artifacts
-            - Make sure the X-ray is properly exposed
+            - Make sure the X-ray is properly exposed (< 70% dark/bright pixels)
+            
+            **Current image did not meet the minimum quality standards for reliable analysis.**
             """)
             st.stop()  # Stop processing if image is invalid
         else:
-            st.success(f"✅ {message}")
+            st.success(f"✅ {message} - Image is suitable for analysis")
         
         # Predict button
         if st.button("🔍 Analyze X-ray", use_container_width=True):
