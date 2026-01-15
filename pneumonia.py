@@ -8,10 +8,6 @@ from PIL import Image
 import joblib
 import cv2
 
-
-# Debug: Show that app is loading
-st.write("App is loading...")
-
 # Page configuration
 st.set_page_config(
     page_title="Pneumonia Detection",
