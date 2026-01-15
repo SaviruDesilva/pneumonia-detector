@@ -3,12 +3,41 @@
 import os
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
-import streamlit as st
+try:
 import tensorflow as tf
+st.write("✓ TensorFlow loaded")
+except Exception as e:
+st.error(f"TensorFlow error: {e}")
+st.stop()
+
+try:
 import numpy as np
+st.write("✓ NumPy loaded")
+except Exception as e:
+st.error(f"NumPy error: {e}")
+st.stop()
+
+try:
 from PIL import Image
+st.write("✓ PIL loaded")
+except Exception as e:
+st.error(f"PIL error: {e}")
+st.stop()
+
+try:
 import joblib
+st.write("✓ joblib loaded")
+except Exception as e:
+st.error(f"joblib error: {e}")
+st.stop()
+
+try:
 import cv2
+st.write("✓ OpenCV loaded")
+except Exception as e:
+st.error(f"OpenCV error: {e}")
+st.stop()
+
 
 # Debug: Show that app is loading
 st.write("App is loading...")
