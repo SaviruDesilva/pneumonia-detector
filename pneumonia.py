@@ -152,7 +152,7 @@ def predict_image(model, img, decision_threshold):
 def main():
     # Header
     st.markdown('<p class="main-header">🫁 Pneumonia Detection System</p>', unsafe_allow_html=True)
-    st.markdown('<p class="sub-header">Upload a chest X-ray image to detect pneumonia</p>', unsafe_allow_html=True)
+    st.markdown('<p class="sub-header">Upload a chest X-ray image to detect bacterial and viral pneumonia</p>', unsafe_allow_html=True)
     
     # Load model and metadata
     model = load_model()
