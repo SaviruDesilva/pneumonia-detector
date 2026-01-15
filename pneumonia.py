@@ -354,10 +354,10 @@ def main():
     st.markdown("---")
     st.markdown("""
     <div style='text-align: center; color: #94a3b8; padding: 20px;'>
-        <p>Made with ❤️ using Streamlit | © 2026 Pneumonia Detection System</p>
-        
+        <p>Made with ❤️ using Streamlit | © 2024 Pneumonia Detection System</p>
+        <p style='font-size: 0.9em;'>For educational purposes only | Not for clinical use</p>
     </div>
     """, unsafe_allow_html=True)
 
 if __name__ == "__main__":
-    main(
+    main()
