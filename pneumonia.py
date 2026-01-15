@@ -172,7 +172,7 @@ def main():
     
     # Header
     st.markdown("<h1>🫁 Pneumonia Detection System</h1>", unsafe_allow_html=True)
-    st.markdown("<p class='subtitle'>Upload a chest X-ray image to detect pneumonia</p>", 
+    st.markdown("<p class='subtitle'>Upload a chest X-ray image to detect bacterial and viral pneumonia</p>", 
                 unsafe_allow_html=True)
     
     # Sidebar with information
