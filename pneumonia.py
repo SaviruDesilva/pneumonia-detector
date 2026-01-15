@@ -1,317 +1,364 @@
-import React, { useState, useEffect } from 'react';
-import { Upload, X, AlertCircle, CheckCircle, Loader } from 'lucide-react';
+import streamlit as st
+import cv2
+import numpy as np
+from PIL import Image
+import time
+import io
 
-export default function PneumoniaDetector() {
-  const [isModelLoading, setIsModelLoading] = useState(true);
-  const [modelError, setModelError] = useState(null);
-  const [image, setImage] = useState(null);
-  const [imagePreview, setImagePreview] = useState(null);
-  const [analyzing, setAnalyzing] = useState(false);
-  const [result, setResult] = useState(null);
-  const [quality, setQuality] = useState(null);
+# Page configuration
+st.set_page_config(
+    page_title="Pneumonia Detection System",
+    page_icon="🫁",
+    layout="wide",
+    initial_sidebar_state="collapsed"
+)
 
-  // Simulate model loading
-  useEffect(() => {
-    const loadModel = async () => {
-      try {
-        // Simulate model loading time (1-2 seconds)
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        setIsModelLoading(false);
-      } catch (error) {
-        setModelError('Failed to load AI model. Please refresh the page.');
-        setIsModelLoading(false);
-      }
-    };
+# Custom CSS for better styling
+st.markdown("""
+<style>
+    .main {
+        background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 50%, #0f172a 100%);
+    }
+    .stApp {
+        background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 50%, #0f172a 100%);
+    }
+    h1 {
+        color: #ffffff;
+        text-align: center;
+        padding: 20px;
+        font-size: 3em;
+    }
+    .subtitle {
+        text-align: center;
+        color: #cbd5e1;
+        font-size: 1.2em;
+        margin-bottom: 30px;
+    }
+    .upload-box {
+        border: 2px dashed #64748b;
+        border-radius: 10px;
+        padding: 40px;
+        text-align: center;
+        background-color: rgba(30, 41, 59, 0.5);
+        margin: 20px 0;
+    }
+    .quality-score {
+        font-size: 2em;
+        font-weight: bold;
+        color: #10b981;
+    }
+    .result-box {
+        padding: 30px;
+        border-radius: 15px;
+        margin: 20px 0;
+        border: 2px solid;
+    }
+    .pneumonia-detected {
+        background-color: rgba(239, 68, 68, 0.1);
+        border-color: #ef4444;
+    }
+    .no-pneumonia {
+        background-color: rgba(16, 185, 129, 0.1);
+        border-color: #10b981;
+    }
+    .stButton>button {
+        width: 100%;
+        background-color: #2563eb;
+        color: white;
+        padding: 15px;
+        font-size: 18px;
+        font-weight: bold;
+        border-radius: 10px;
+        border: none;
+        transition: all 0.3s;
+    }
+    .stButton>button:hover {
+        background-color: #1d4ed8;
+        transform: translateY(-2px);
+    }
+    .info-box {
+        background-color: rgba(59, 130, 246, 0.1);
+        border: 1px solid #3b82f6;
+        border-radius: 10px;
+        padding: 15px;
+        margin: 20px 0;
+        color: #93c5fd;
+    }
+    .warning-box {
+        background-color: rgba(245, 158, 11, 0.1);
+        border: 1px solid #f59e0b;
+        border-radius: 10px;
+        padding: 15px;
+        margin: 20px 0;
+        color: #fcd34d;
+    }
+</style>
+""", unsafe_allow_html=True)
+
+def check_image_quality(image):
+    """Check image quality based on resolution and sharpness"""
+    try:
+        # Convert PIL to numpy array
+        img_array = np.array(image)
+        
+        # Convert to grayscale if colored
+        if len(img_array.shape) == 3:
+            gray = cv2.cvtColor(img_array, cv2.COLOR_RGB2GRAY)
+        else:
+            gray = img_array
+        
+        height, width = gray.shape
+        
+        # Calculate quality score based on resolution
+        resolution_score = min(70, (width * height) / (512 * 512) * 70)
+        
+        # Check sharpness using Laplacian variance
+        laplacian_var = cv2.Laplacian(gray, cv2.CV_64F).var()
+        sharpness_score = min(30, laplacian_var / 10)
+        
+        quality = int(resolution_score + sharpness_score)
+        return min(100, max(50, quality))
+    except Exception as e:
+        st.error(f"Error checking quality: {str(e)}")
+        return 60
+
+def analyze_pneumonia(image):
+    """
+    Simulate pneumonia detection
+    Replace with actual AI model in production (TensorFlow, PyTorch)
+    """
+    try:
+        # Convert PIL to numpy array
+        img_array = np.array(image)
+        
+        # Convert to grayscale
+        if len(img_array.shape) == 3:
+            gray = cv2.cvtColor(img_array, cv2.COLOR_RGB2GRAY)
+        else:
+            gray = img_array
+        
+        # Simulate processing time
+        progress_bar = st.progress(0)
+        for i in range(100):
+            time.sleep(0.02)
+            progress_bar.progress(i + 1)
+        
+        # Simple heuristic for demonstration
+        mean_intensity = np.mean(gray)
+        std_intensity = np.std(gray)
+        
+        # Mock prediction (replace with real model)
+        has_pneumonia = (mean_intensity < 120 and std_intensity > 40) or np.random.random() > 0.5
+        confidence = np.random.randint(65, 95) if has_pneumonia else np.random.randint(15, 45)
+        
+        return {
+            'has_pneumonia': bool(has_pneumonia),
+            'confidence': int(confidence),
+            'details': 'Pneumonia patterns detected in lung regions' if has_pneumonia 
+                      else 'No significant pneumonia indicators found'
+        }
+    except Exception as e:
+        st.error(f"Error during analysis: {str(e)}")
+        return None
+
+def main():
+    # Initialize session state
+    if 'analyzed' not in st.session_state:
+        st.session_state.analyzed = False
+    if 'result' not in st.session_state:
+        st.session_state.result = None
+    if 'quality' not in st.session_state:
+        st.session_state.quality = None
     
-    loadModel();
-  }, []);
-
-  const handleFileChange = (e) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      processFile(file);
-    }
-  };
-
-  const handleDrop = (e) => {
-    e.preventDefault();
-    const file = e.dataTransfer.files?.[0];
-    if (file) {
-      processFile(file);
-    }
-  };
-
-  const processFile = (file) => {
-    if (!file.type.startsWith('image/')) {
-      alert('Please upload an image file');
-      return;
-    }
-
-    if (file.size > 200 * 1024 * 1024) {
-      alert('File size must be under 200MB');
-      return;
-    }
-
-    setImage(file);
-    setResult(null);
-
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      setImagePreview(e.target.result);
-      checkImageQuality(file.size);
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const checkImageQuality = (fileSize) => {
-    // Simple quality estimation based on file size and format
-    const qualityScore = Math.min(100, Math.floor((fileSize / 1024 / 50) * 100));
-    const adjustedScore = Math.max(50, Math.min(100, qualityScore));
-    setQuality(adjustedScore);
-  };
-
-  const analyzeImage = async () => {
-    if (!image) return;
-
-    setAnalyzing(true);
-    setResult(null);
-
-    try {
-      // Simulate AI analysis (2-3 seconds)
-      await new Promise(resolve => setTimeout(resolve, 2500));
-
-      // Simulate detection results
-      const hasDetection = Math.random() > 0.5;
-      const confidence = hasDetection 
-        ? Math.floor(Math.random() * 30 + 60) // 60-90% for pneumonia
-        : Math.floor(Math.random() * 40 + 10); // 10-50% for normal
-
-      setResult({
-        hasPneumonia: hasDetection,
-        confidence: confidence,
-        details: hasDetection 
-          ? 'Pneumonia patterns detected in lung regions'
-          : 'No significant pneumonia indicators found'
-      });
-    } catch (error) {
-      alert('Analysis failed. Please try again.');
-    } finally {
-      setAnalyzing(false);
-    }
-  };
-
-  const clearImage = () => {
-    setImage(null);
-    setImagePreview(null);
-    setResult(null);
-    setQuality(null);
-  };
-
-  if (isModelLoading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center p-4">
-        <div className="text-center">
-          <Loader className="w-16 h-16 text-blue-400 animate-spin mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-white mb-2">Loading AI Model</h2>
-          <p className="text-slate-300">Please wait while we initialize the pneumonia detection system...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (modelError) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center p-4">
-        <div className="bg-red-500/20 border border-red-500 rounded-lg p-6 max-w-md">
-          <AlertCircle className="w-12 h-12 text-red-400 mx-auto mb-4" />
-          <h2 className="text-xl font-bold text-white text-center mb-2">Error Loading Model</h2>
-          <p className="text-slate-300 text-center">{modelError}</p>
-          <button 
-            onClick={() => window.location.reload()}
-            className="mt-4 w-full bg-red-500 hover:bg-red-600 text-white py-2 rounded-lg transition"
-          >
-            Refresh Page
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 p-4 md:p-8">
-      <div className="max-w-4xl mx-auto">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <div className="flex items-center justify-center gap-3 mb-2">
-            <span className="text-4xl">🫁</span>
-            <h1 className="text-3xl md:text-4xl font-bold text-white">
-              Pneumonia Detection System
-            </h1>
-          </div>
-          <p className="text-slate-300">Upload a chest X-ray image to detect pneumonia</p>
-        </div>
-
-        {/* Upload Area */}
-        <div className="bg-slate-800/50 backdrop-blur rounded-xl p-6 mb-6 border border-slate-700">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-white">Choose a chest X-ray image...</h2>
-            <div className="w-8 h-8 bg-slate-700 rounded-full flex items-center justify-center">
-              <span className="text-slate-400 text-sm">?</span>
-            </div>
-          </div>
-
-          {!image ? (
-            <div
-              onDrop={handleDrop}
-              onDragOver={(e) => e.preventDefault()}
-              className="border-2 border-dashed border-slate-600 rounded-lg p-12 text-center hover:border-blue-500 transition cursor-pointer"
-              onClick={() => document.getElementById('fileInput').click()}
-            >
-              <Upload className="w-16 h-16 text-slate-500 mx-auto mb-4" />
-              <p className="text-white font-medium mb-2">Drag and drop file here</p>
-              <p className="text-slate-400 text-sm mb-4">Limit 200MB per file • JPG, JPEG, PNG</p>
-              <button className="bg-slate-700 hover:bg-slate-600 text-white px-6 py-2 rounded-lg transition">
-                Browse files
-              </button>
-              <input
-                id="fileInput"
-                type="file"
-                accept="image/*"
-                onChange={handleFileChange}
-                className="hidden"
-              />
-            </div>
-          ) : (
-            <div>
-              <div className="flex items-center justify-between bg-slate-700/50 rounded-lg p-4 mb-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-slate-600 rounded flex items-center justify-center">
-                    <Upload className="w-5 h-5 text-slate-300" />
-                  </div>
-                  <div>
-                    <p className="text-white font-medium">{image.name}</p>
-                    <p className="text-slate-400 text-sm">{(image.size / 1024).toFixed(1)}KB</p>
-                  </div>
-                </div>
-                <button
-                  onClick={clearImage}
-                  className="w-8 h-8 bg-slate-600 hover:bg-slate-500 rounded flex items-center justify-center transition"
-                >
-                  <X className="w-5 h-5 text-white" />
-                </button>
-              </div>
-
-              {imagePreview && (
-                <div className="text-center">
-                  <img
-                    src={imagePreview}
-                    alt="X-ray preview"
-                    className="max-w-full max-h-96 mx-auto rounded-lg border border-slate-600"
-                  />
-                  <p className="text-slate-400 text-sm mt-2">Uploaded X-ray Image</p>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Quality Check */}
-        {quality && (
-          <div className="bg-slate-800/50 backdrop-blur rounded-xl p-6 mb-6 border border-slate-700">
-            <div className="flex items-center gap-3 mb-4">
-              <span className="text-2xl">🔍</span>
-              <h2 className="text-xl font-bold text-white">Image Quality Check</h2>
-            </div>
-
-            <div className="mb-2">
-              <div className="flex justify-between text-sm mb-1">
-                <span className="text-slate-400">Quality</span>
-                <span className="text-white font-bold">{quality}/100</span>
-              </div>
-              <div className="w-full bg-slate-700 rounded-full h-3 overflow-hidden">
-                <div
-                  className={`h-full transition-all duration-500 ${
-                    quality >= 70 ? 'bg-green-500' : quality >= 50 ? 'bg-yellow-500' : 'bg-red-500'
-                  }`}
-                  style={{ width: `${quality}%` }}
-                />
-              </div>
-            </div>
-
-            <div className="bg-green-500/20 border border-green-500 rounded-lg p-4 flex items-start gap-3">
-              <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" />
-              <div>
-                <p className="text-green-400 font-medium">Image quality is acceptable</p>
-                <p className="text-slate-300 text-sm">Proceed with pneumonia detection analysis</p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Analyze Button */}
-        {image && !result && (
-          <button
-            onClick={analyzeImage}
-            disabled={analyzing}
-            className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-slate-600 text-white font-semibold py-4 rounded-xl transition flex items-center justify-center gap-3 mb-6"
-          >
-            {analyzing ? (
-              <>
-                <Loader className="w-5 h-5 animate-spin" />
-                Analyzing X-ray...
-              </>
-            ) : (
-              <>
-                Analyze for Pneumonia
-              </>
-            )}
-          </button>
-        )}
-
-        {/* Results */}
-        {result && (
-          <div className="bg-slate-800/50 backdrop-blur rounded-xl p-6 border border-slate-700">
-            <h2 className="text-xl font-bold text-white mb-4">Detection Results</h2>
+    # Header
+    st.markdown("<h1>🫁 Pneumonia Detection System</h1>", unsafe_allow_html=True)
+    st.markdown("<p class='subtitle'>Upload a chest X-ray image to detect pneumonia</p>", 
+                unsafe_allow_html=True)
+    
+    # Sidebar with information
+    with st.sidebar:
+        st.header("ℹ️ About")
+        st.write("""
+        This AI-powered system analyzes chest X-ray images 
+        to detect signs of pneumonia.
+        """)
+        
+        st.header("📋 Instructions")
+        st.write("""
+        1. Upload a chest X-ray image
+        2. Wait for quality check
+        3. Click 'Analyze for Pneumonia'
+        4. View results
+        """)
+        
+        st.header("⚠️ Disclaimer")
+        st.warning("""
+        This is an educational tool only. 
+        Always consult healthcare professionals 
+        for medical diagnosis.
+        """)
+        
+        st.header("📊 Supported Formats")
+        st.info("JPG, JPEG, PNG (Max 200MB)")
+    
+    # Main content
+    col1, col2 = st.columns([1, 1])
+    
+    with col1:
+        st.subheader("📤 Upload X-ray Image")
+        
+        uploaded_file = st.file_uploader(
+            "Choose a chest X-ray image...",
+            type=['jpg', 'jpeg', 'png'],
+            help="Upload a chest X-ray image in JPG, JPEG, or PNG format"
+        )
+        
+        if uploaded_file is not None:
+            # Display uploaded image
+            image = Image.open(uploaded_file)
+            st.image(image, caption="Uploaded X-ray Image", use_container_width=True)
             
-            <div className={`rounded-lg p-6 mb-4 ${
-              result.hasPneumonia 
-                ? 'bg-red-500/20 border border-red-500' 
-                : 'bg-green-500/20 border border-green-500'
-            }`}>
-              <div className="flex items-center gap-3 mb-3">
-                {result.hasPneumonia ? (
-                  <AlertCircle className="w-8 h-8 text-red-400" />
-                ) : (
-                  <CheckCircle className="w-8 h-8 text-green-400" />
-                )}
-                <div>
-                  <h3 className={`text-xl font-bold ${
-                    result.hasPneumonia ? 'text-red-400' : 'text-green-400'
-                  }`}>
-                    {result.hasPneumonia ? 'Pneumonia Detected' : 'No Pneumonia Detected'}
-                  </h3>
-                  <p className="text-slate-300">Confidence: {result.confidence}%</p>
-                </div>
-              </div>
-              <p className="text-slate-200">{result.details}</p>
+            # File info
+            file_size = len(uploaded_file.getvalue()) / 1024  # KB
+            st.info(f"📁 **File:** {uploaded_file.name} ({file_size:.1f} KB)")
+            
+            # Check image quality
+            if st.session_state.quality is None:
+                with st.spinner("Checking image quality..."):
+                    st.session_state.quality = check_image_quality(image)
+            
+            # Clear previous results if new image uploaded
+            if 'last_uploaded_name' not in st.session_state or \
+               st.session_state.last_uploaded_name != uploaded_file.name:
+                st.session_state.analyzed = False
+                st.session_state.result = None
+                st.session_state.last_uploaded_name = uploaded_file.name
+    
+    with col2:
+        if uploaded_file is not None:
+            # Quality Check Section
+            st.subheader("🔍 Image Quality Check")
+            
+            quality = st.session_state.quality
+            
+            # Quality progress bar
+            if quality >= 70:
+                color = "green"
+                status = "✅ Excellent"
+            elif quality >= 50:
+                color = "orange"
+                status = "⚠️ Acceptable"
+            else:
+                color = "red"
+                status = "❌ Poor"
+            
+            st.markdown(f"**Quality Score:** <span class='quality-score' style='color: {color}'>{quality}/100</span>", 
+                       unsafe_allow_html=True)
+            st.progress(quality / 100)
+            st.markdown(f"**Status:** {status}")
+            
+            if quality >= 50:
+                st.success("✓ Image quality is acceptable for analysis")
+            else:
+                st.warning("⚠️ Image quality is low. Results may be less accurate.")
+            
+            st.markdown("---")
+            
+            # Analysis Button
+            if not st.session_state.analyzed:
+                if st.button("🔬 Analyze for Pneumonia", type="primary"):
+                    with st.spinner("Analyzing X-ray image..."):
+                        result = analyze_pneumonia(image)
+                        if result:
+                            st.session_state.result = result
+                            st.session_state.analyzed = True
+                            st.rerun()
+            else:
+                if st.button("🔄 Analyze Another Image"):
+                    st.session_state.analyzed = False
+                    st.session_state.result = None
+                    st.session_state.quality = None
+                    st.session_state.last_uploaded_name = None
+                    st.rerun()
+    
+    # Results Section
+    if st.session_state.analyzed and st.session_state.result:
+        st.markdown("---")
+        st.subheader("📊 Detection Results")
+        
+        result = st.session_state.result
+        
+        col1, col2, col3 = st.columns([1, 1, 1])
+        
+        with col1:
+            if result['has_pneumonia']:
+                st.error(f"### 🚨 Pneumonia Detected")
+            else:
+                st.success(f"### ✅ No Pneumonia Detected")
+        
+        with col2:
+            st.metric("Confidence Score", f"{result['confidence']}%")
+        
+        with col3:
+            if result['has_pneumonia']:
+                st.metric("Risk Level", "High", delta="⚠️")
+            else:
+                st.metric("Risk Level", "Low", delta="✓")
+        
+        # Detailed results
+        if result['has_pneumonia']:
+            st.markdown(f"""
+            <div class='result-box pneumonia-detected'>
+                <h3 style='color: #ef4444;'>⚠️ Pneumonia Indicators Found</h3>
+                <p style='color: #fca5a5; font-size: 1.1em;'>{result['details']}</p>
+                <p style='color: #fca5a5;'><strong>Confidence:</strong> {result['confidence']}%</p>
             </div>
-
-            <div className="bg-blue-500/20 border border-blue-500 rounded-lg p-4">
-              <p className="text-blue-300 text-sm">
-                <strong>Medical Disclaimer:</strong> This is an AI-assisted tool for educational purposes. 
-                Always consult with qualified healthcare professionals for proper medical diagnosis and treatment.
-              </p>
+            """, unsafe_allow_html=True)
+            
+            st.error("""
+            **⚠️ Important Next Steps:**
+            - Consult a pulmonologist or radiologist immediately
+            - Get a professional medical diagnosis
+            - Follow prescribed treatment plans
+            - This AI analysis is for screening purposes only
+            """)
+        else:
+            st.markdown(f"""
+            <div class='result-box no-pneumonia'>
+                <h3 style='color: #10b981;'>✅ No Significant Pneumonia Indicators</h3>
+                <p style='color: #6ee7b7; font-size: 1.1em;'>{result['details']}</p>
+                <p style='color: #6ee7b7;'><strong>Confidence:</strong> {result['confidence']}%</p>
             </div>
-
-            <button
-              onClick={clearImage}
-              className="w-full bg-slate-700 hover:bg-slate-600 text-white py-3 rounded-lg mt-4 transition"
-            >
-              Analyze Another Image
-            </button>
-          </div>
-        )}
-      </div>
+            """, unsafe_allow_html=True)
+            
+            st.info("""
+            **ℹ️ Recommendations:**
+            - Continue regular health checkups
+            - Maintain good respiratory hygiene
+            - Consult a doctor if symptoms develop
+            - This does not replace professional medical examination
+            """)
+        
+        # Medical Disclaimer
+        st.markdown("""
+        <div class='warning-box'>
+            <h4>⚠️ Medical Disclaimer</h4>
+            <p>This application is for educational and research purposes only. 
+            It should NOT be used as a substitute for professional medical advice, 
+            diagnosis, or treatment. Always consult with qualified healthcare 
+            professionals for proper medical care.</p>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    # Footer
+    st.markdown("---")
+    st.markdown("""
+    <div style='text-align: center; color: #94a3b8; padding: 20px;'>
+        <p>Made with ❤️ using Streamlit | © 2024 Pneumonia Detection System</p>
+        <p style='font-size: 0.9em;'>For educational purposes only | Not for clinical use</p>
     </div>
-  );
-}
+    """, unsafe_allow_html=True)
+
+if __name__ == "__main__":
+    main()
+
