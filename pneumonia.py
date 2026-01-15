@@ -1,8 +1,15 @@
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+
 import streamlit as st
 import tensorflow as tf
 import numpy as np
 from PIL import Image
 import joblib
+import cv2
+
+# Debug: Show that app is loading
+st.write("App is loading...")
 
 # Page configuration
 st.set_page_config(
@@ -63,6 +70,69 @@ def load_metadata():
         st.warning("⚠️ Metadata files not found. Using default values.")
         return ['NORMAL', 'PNEUMONIA'], 0.65
 
+# Image quality validation function
+def validate_image_quality(img):
+    """
+    Check if the image is clear enough for analysis
+    Returns: (is_valid, message, quality_score)
+    """
+    img_array = np.array(img.convert('L'))  # Convert to grayscale
+    
+    # Check 1: Image sharpness (using Laplacian variance)
+    laplacian_var = cv2.Laplacian(img_array, cv2.CV_64F).var()
+    
+    # Check 2: Brightness (mean pixel value)
+    brightness = np.mean(img_array)
+    
+    # Check 3: Contrast (standard deviation)
+    contrast = np.std(img_array)
+    
+    # Check 4: Check if image is too dark or too bright
+    dark_pixels = np.sum(img_array < 30) / img_array.size
+    bright_pixels = np.sum(img_array > 225) / img_array.size
+    
+    # Quality thresholds
+    min_sharpness = 100
+    min_contrast = 20
+    max_dark_ratio = 0.7
+    max_bright_ratio = 0.7
+    min_brightness = 20
+    max_brightness = 235
+    
+    issues = []
+    
+    # Validate sharpness
+    if laplacian_var < min_sharpness:
+        issues.append("Image is too blurry or out of focus")
+    
+    # Validate contrast
+    if contrast < min_contrast:
+        issues.append("Image has very low contrast")
+    
+    # Validate brightness
+    if brightness < min_brightness:
+        issues.append("Image is too dark")
+    elif brightness > max_brightness:
+        issues.append("Image is overexposed")
+    
+    # Validate dark/bright pixel ratios
+    if dark_pixels > max_dark_ratio:
+        issues.append("Image has too many dark areas")
+    if bright_pixels > max_bright_ratio:
+        issues.append("Image has too many bright/washed out areas")
+    
+    # Calculate overall quality score (0-100)
+    quality_score = min(100, (
+        (laplacian_var / 500 * 40) +  # Sharpness contributes 40%
+        (contrast / 100 * 30) +         # Contrast contributes 30%
+        (30 if 50 < brightness < 200 else 15)  # Brightness contributes 30%
+    ))
+    
+    is_valid = len(issues) == 0
+    message = " | ".join(issues) if issues else "Image quality is acceptable"
+    
+    return is_valid, message, quality_score
+
 # Prediction function
 def predict_image(model, img, decision_threshold):
     # Preprocess image
@@ -98,7 +168,7 @@ def main():
     with st.sidebar:
         st.header("ℹ️ About")
         st.write("""
-        This application uses a deep learning model to detect bacterial and viral pneumonia from chest X-ray images.
+        This application uses a deep learning model to detect pneumonia from chest X-ray images.
         
         **How to use:**
         1. Upload a chest X-ray image
@@ -135,6 +205,35 @@ def main():
         with col2:
             img = Image.open(uploaded_file)
             st.image(img, caption='Uploaded X-ray Image', use_container_width=True)
+        
+        # Validate image quality first
+        st.markdown("---")
+        st.subheader("🔍 Image Quality Check")
+        
+        with st.spinner("Checking image quality..."):
+            is_valid, message, quality_score = validate_image_quality(img)
+        
+        # Display quality score
+        col1, col2 = st.columns([3, 1])
+        with col1:
+            st.progress(quality_score / 100)
+        with col2:
+            st.metric("Quality", f"{quality_score:.0f}/100")
+        
+        if not is_valid:
+            st.error(f"⚠️ **Image Quality Issues Detected:**\n\n{message}")
+            st.warning("""
+            **Please upload a clearer X-ray image for accurate analysis.**
+            
+            Tips for better image quality:
+            - Ensure the image is in focus and not blurry
+            - Use proper lighting (not too dark or too bright)
+            - Avoid images with too much noise or artifacts
+            - Make sure the X-ray is properly exposed
+            """)
+            st.stop()  # Stop processing if image is invalid
+        else:
+            st.success(f"✅ {message}")
         
         # Predict button
         if st.button("🔍 Analyze X-ray", use_container_width=True):
