@@ -94,7 +94,7 @@ joblib.dump(test_ds.class_names,"class_names.pkl")
 joblib.dump(0.60,"decision_threshold.pkl")
 
 #evaluate the model
-tess_loss,test_accuracy=model.evaluate(test_ds)
+test_loss,test_accuracy=model.evaluate(test_ds)
 print("test accuracy",test_accuracy)
 
 img_path='pne3.jpg'
