@@ -8,6 +8,17 @@ from PIL import Image
 import joblib
 import cv2
 
+# --- AUTHENTICATION SECTION ---
+# This checks if the user is already logged in
+if not st.experimental_user.is_logged_in:
+    st.title("🛡️ Secure Access Control")
+    st.warning("Please log in to use the Pneumonia Detector.")
+    
+    # This calls the settings you saved in the 'Secrets' box
+    if st.button("Log in with Asgardeo"):
+        st.login() 
+    st.stop()  # Prevents the rest of the app from loading
+
 # Page configuration
 st.set_page_config(
     page_title="Pneumonia Detection",
