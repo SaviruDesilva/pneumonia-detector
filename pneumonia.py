@@ -9,7 +9,6 @@ import joblib
 import cv2
 
 # --- AUTHENTICATION SECTION ---
-import streamlit as st
 
 # Initialize session state for login status
 if 'logged_in' not in st.session_state:
