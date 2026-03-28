@@ -9,26 +9,14 @@ import joblib
 import cv2
 
 # --- AUTHENTICATION SECTION ---
-
-# Initialize session state for login status
-if 'logged_in' not in st.session_state:
-    st.session_state.logged_in = False
-
-# --- AUTHENTICATION SECTION ---
-if not st.session_state.logged_in:
+if not st.user.is_logged_in:
     st.title("🛡️ Secure Access Control")
     st.warning("Please log in to use the Pneumonia Detector.")
-    
+
+    # Pass the name of the config block from your secrets.toml
     if st.button("Log in with Asgardeo"):
-        # This is where you would redirect to Asgardeo or handle the callback
-        # For now, let's simulate a successful login:
-        st.session_state.logged_in = True
-        st.rerun() 
-    st.stop()  # Prevents the rest of the app from running
-
-# Everything below this line only runs if logged_in is True
-st.success("Welcome! You are logged in.")
-
+        st.login("asgardeo") 
+    st.stop()
 # Page configuration
 st.set_page_config(
     page_title="Pneumonia Detection",
