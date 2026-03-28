@@ -13,7 +13,7 @@ if not st.user.is_logged_in: # Changed from st.experimental_user
     st.title("🛡️ Secure Access Control")
     st.warning("Please log in to use the Pneumonia Detector.")
     
-if st.button("Log in with Asgardeo"):
+    if st.button("Log in with Asgardeo"):
         st.login() 
     st.stop()
 
